@@ -35,45 +35,52 @@ class _MyHomePageState extends State<MyHomePage> {
   GlobalKey<ScaffoldState> globalKey = GlobalKey<ScaffoldState>();
 
   late bool isLoading;
-  late TextEditingController searchTextEditingController;
+  late TextEditingController searchC;
 
   List<Result> results = [];
   
-
   Timer? debounce;
 
-  void textChange() {
+  void onChange() {
     setState(() {
       isLoading = true;
     });
     if (debounce?.isActive ?? false) debounce!.cancel();
-    debounce = Timer(const Duration(milliseconds: 500), () {
+    debounce = Timer(const Duration(milliseconds: 500), () async {
       setState(() {
         isLoading = false;
       });
+      await loadData(context);
     });
   }
 
   @override
   void initState() {
     super.initState();
+    
     isLoading = true;
-    searchTextEditingController = TextEditingController();
-    searchTextEditingController.addListener(textChange);
+
+    Future.delayed(Duration.zero, () async {
+      await loadData(context);
+    });
+
+    searchC = TextEditingController();
+    searchC.addListener(onChange);
   }
 
   @override 
   void dispose() {
-    searchTextEditingController.removeListener(textChange);
-    searchTextEditingController.dispose();
     super.dispose();
+
+    searchC.removeListener(onChange);
+    searchC.dispose();
     debounce!.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
 
-    loadData(context);
+   
 
     return Scaffold(
       key: globalKey,
@@ -85,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
           const SliverAppBar(
             backgroundColor: Colors.white,
-            title: Text("Search App",
+            title: Text("Search Movie",
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 14.0,
@@ -107,7 +114,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 right: 16.0
               ),
               child: TextField(
-                controller: searchTextEditingController,
+                controller: searchC,
                 style: const TextStyle(
                   fontSize: 14.0,
                   fontWeight: FontWeight.w400
@@ -142,6 +149,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                   ),
                 ),
+              ),
+            )
+          : results.isEmpty 
+          ?  const SliverFillRemaining(
+              child: Center(
+                child: Text("Data not found",
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    color: Colors.black
+                  ),
+                )
               ),
             )
           : SliverPadding(
@@ -237,7 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> loadData(BuildContext context) async {
     try {
       Dio dio = Dio();
-      Response res = await dio.get("https://api.themoviedb.org/3/search/movie?api_key=${AppConstants.movieKey}&query='${searchTextEditingController.text}'");
+      Response res = await dio.get("https://api.themoviedb.org/3/search/movie?api_key=${AppConstants.movieKey}&query='${searchC.text}'");
       Map<String, dynamic> data = res.data;
       MovieDbModel movieDbModel = MovieDbModel.fromJson(data);
       setState(() {
