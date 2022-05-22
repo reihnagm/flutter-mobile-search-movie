@@ -46,7 +46,7 @@ class Result {
   String? overview;
   double? popularity;
   String? posterPath;
-  dynamic? releaseDate;
+  dynamic releaseDate;
   String? title;
   bool? video;
   double? voteAverage;

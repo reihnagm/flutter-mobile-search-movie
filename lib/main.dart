@@ -80,8 +80,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
 
-   
-
     return Scaffold(
       key: globalKey,
       backgroundColor: const Color(0xffF8F8FF),
@@ -267,9 +265,9 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() => isLoading = false);
       debugPrint(e.response!.statusCode.toString());
       debugPrint(e.response!.statusMessage.toString());
-    } catch(e) {
+    } catch(e, stacktrace) {
+      debugPrint(stacktrace.toString());
       setState(() => isLoading = false);
-      debugPrint(e.toString());
     }
   }
 
