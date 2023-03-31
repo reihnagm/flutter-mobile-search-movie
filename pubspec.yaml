@@ -1,24 +1,26 @@
 name: flutter_search
-description: Flutter Search.
+description: Flutter Module Search.
 
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.16.0 <3.0.0"
+  sdk: ">=2.19.6 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
   # C
+  cupertino_icons: ^1.0.2
   cached_network_image: ^3.2.0
 
   # D
   dio: ^4.0.4
 
-  cupertino_icons: ^1.0.2
+  # S
+  shimmer: ^2.0.0
 
 dev_dependencies:
   flutter_test:

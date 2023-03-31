@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter_search/basewidgets/loader/shimmer_ver1.dart';
+import 'package:shimmer/shimmer.dart';
+
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -16,10 +19,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Search Moview',
+    return const MaterialApp(
+      title: 'Search Movie',
       debugShowCheckedModeBanner: false,
-      home: MyHomePage(key: UniqueKey()),
+      home: MyHomePage(),
     );
   }
 }
@@ -41,31 +44,51 @@ class _MyHomePageState extends State<MyHomePage> {
   
   Timer? debounce;
 
-  void onChange() {
-    setState(() {
-      isLoading = true;
-    });
-    if (debounce?.isActive ?? false) debounce!.cancel();
-    debounce = Timer(const Duration(milliseconds: 500), () async {
+  Future<void> getData(BuildContext context) async {
+    try {
+      Dio dio = Dio();
+      Response res = await dio.get("${AppConstants.baseUrl}?api_key=${AppConstants.movieKey}&query=${searchC.text}");
+      Map<String, dynamic> data = res.data;
+      MovieDbModel movieDbModel = MovieDbModel.fromJson(data);
       setState(() {
+        results = [];
+        results.addAll(movieDbModel.results!);
         isLoading = false;
       });
-      await loadData(context);
-    });
+    } on DioError catch(e) {
+      setState(() => isLoading = false);
+      debugPrint(e.response!.statusCode.toString());
+      debugPrint(e.response!.statusMessage.toString());
+    } catch(e, stacktrace) {
+      debugPrint(stacktrace.toString());
+      setState(() => isLoading = false);
+    }
+  }
+
+  void onChange() {
+    if(searchC.text.isNotEmpty) {
+      setState(() => isLoading = true);
+
+      if (debounce?.isActive ?? false) debounce!.cancel();
+      debounce = Timer(const Duration(milliseconds: 1000), () async {
+        await getData(context);
+        setState(() => isLoading = false);
+      });
+    }
   }
 
   @override
   void initState() {
     super.initState();
+
+    searchC = TextEditingController();
+    searchC.addListener(onChange);
     
     isLoading = true;
 
     Future.delayed(Duration.zero, () async {
-      await loadData(context);
+      await getData(context);
     });
-
-    searchC = TextEditingController();
-    searchC.addListener(onChange);
   }
 
   @override 
@@ -93,8 +116,8 @@ class _MyHomePageState extends State<MyHomePage> {
             title: Text("Search Movie",
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 14.0,
-                fontWeight: FontWeight.w400
+                fontSize: 16.0,
+                fontWeight: FontWeight.w600
               ),
             ),
             pinned: true,
@@ -136,18 +159,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
 
-
           isLoading 
-          ? const SliverFillRemaining(
-              child: Center(
-                child: SizedBox(
-                  width: 16.0,
-                  height: 16.0,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                  ),
-                ),
-              ),
+          ? const SliverToBoxAdapter(
+              child: ShimmerVer1(count: 10)
             )
           : results.isEmpty 
           ?  const SliverFillRemaining(
@@ -182,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           bottom: 8.0
                         ),
                         padding: const EdgeInsets.all(
-                          8.0
+                          12.0
                         ),
                         decoration: BoxDecoration(
                           color: Colors.blue[200],
@@ -195,23 +209,34 @@ class _MyHomePageState extends State<MyHomePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             CachedNetworkImage(
-                              imageUrl: "https://image.tmdb.org/t/p/w500/${results[i].posterPath}",
-                              fit: BoxFit.cover,
-                              height: 150.0,
+                              imageUrl: "${AppConstants.baseUrlImg}/${results[i].posterPath}",
+                              imageBuilder: (BuildContext context, ImageProvider<Object> imageProvider) {
+                                return Container(
+                                  width: 150.0,
+                                  height: 150.0,
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      alignment: Alignment.centerLeft,
+                                      fit: BoxFit.fitHeight,
+                                      image: imageProvider
+                                    )
+                                  ),
+                                );
+                              },
                               placeholder: (BuildContext context, String val) {
-                                return const Center(
-                                  child: SizedBox(
-                                    width: 16.0,
-                                    height: 16.0,
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                                    ),
+                                return const SizedBox(
+                                  width: 16.0,
+                                  height: 16.0,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                                   ),
                                 );
                               },
                               errorWidget: (BuildContext context, String val, dynamic data) {
                                 return Image.asset("assets/images/default.png",
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.fitHeight,
+                                  alignment: Alignment.centerLeft,
+                                  width: 150.0,
                                   height: 150.0,
                                 );
                               }
@@ -242,33 +267,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ]),
             ),
           )
-
      
-
         ],
       ),
     );
-  }
-
-  Future<void> loadData(BuildContext context) async {
-    try {
-      Dio dio = Dio();
-      Response res = await dio.get("https://api.themoviedb.org/3/search/movie?api_key=${AppConstants.movieKey}&query='${searchC.text}'");
-      Map<String, dynamic> data = res.data;
-      MovieDbModel movieDbModel = MovieDbModel.fromJson(data);
-      setState(() {
-        results = [];
-        results.addAll(movieDbModel.results!);
-        isLoading = false;
-      });
-    } on DioError catch(e) {
-      setState(() => isLoading = false);
-      debugPrint(e.response!.statusCode.toString());
-      debugPrint(e.response!.statusMessage.toString());
-    } catch(e, stacktrace) {
-      debugPrint(stacktrace.toString());
-      setState(() => isLoading = false);
-    }
   }
 
 }
