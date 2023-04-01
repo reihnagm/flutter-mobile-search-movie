@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_search/basewidgets/drawer/drawer.dart';
 import 'package:flutter_search/basewidgets/loader/shimmer_ver1.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -107,13 +108,14 @@ class _MyHomePageState extends State<MyHomePage> {
       key: globalKey,
       backgroundColor: const Color(0xffF8F8FF),
       resizeToAvoidBottomInset: false,
+      drawer: const DrawerWidget(),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
 
-          const SliverAppBar(
+          SliverAppBar(
             backgroundColor: Colors.white,
-            title: Text("Search Movie",
+            title: const Text("Search V1",
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 16.0,
@@ -124,7 +126,14 @@ class _MyHomePageState extends State<MyHomePage> {
             centerTitle: true,
             forceElevated: true,
             elevation: 0.0,
-            automaticallyImplyLeading: false,
+            leading: IconButton(
+              splashRadius: 20.0,
+              icon: const Icon(Icons.menu),
+              color: Colors.black,
+              onPressed: () {
+                globalKey.currentState!.openDrawer();
+              },
+            ),
           ),
 
           SliverToBoxAdapter(
@@ -224,12 +233,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                 );
                               },
                               placeholder: (BuildContext context, String val) {
-                                return const SizedBox(
-                                  width: 16.0,
-                                  height: 16.0,
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                                  ),
+                                return Image.asset("assets/images/default.png",
+                                  fit: BoxFit.fitHeight,
+                                  alignment: Alignment.centerLeft,
+                                  width: 150.0,
+                                  height: 150.0,
                                 );
                               },
                               errorWidget: (BuildContext context, String val, dynamic data) {
