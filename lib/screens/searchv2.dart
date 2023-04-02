@@ -1,12 +1,83 @@
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as d;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_search/basewidgets/loader/shimmer_ver1.dart';
 import 'package:flutter_search/models/movie.dart';
 import 'package:flutter_search/utils/constant.dart';
+import 'package:get/get.dart';
 
-class SearchV2 extends StatelessWidget {
-  const SearchV2({Key? key, 
+enum Loading { idle, loading, loaded, error }
+
+class SearchV2Controller extends GetxController {
+
+  Rx<Loading> loading = Loading.idle.obs;
+
+  RxList<Result> movies = <Result>[].obs;
+  RxList<Result> suggestions = <Result>[].obs;
+
+  Future<List<Result>> getData(BuildContext context, String query) async {
+    setStateLoading(Loading.loading.obs);
+    try {
+      d.Dio dio = d.Dio();
+      d.Response res = await dio.get("${AppConstants.baseUrl}?api_key=${AppConstants.movieKey}&query=$query");
+      Map<String, dynamic> data = res.data;
+      MovieDbModel movieDbModel = MovieDbModel.fromJson(data);
+      List<Result> movieDBResult = movieDbModel.results!;
+      movies.value = [];
+      movies.addAll(movieDBResult);
+      setStateLoading(Loading.loaded.obs);
+      return movieDBResult;
+    } on d.DioError catch(e) {
+      debugPrint(e.toString());
+      debugPrint(e.response!.statusCode.toString());
+      debugPrint(e.response!.statusMessage.toString());
+      setStateLoading(Loading.error.obs);
+    } catch(e, stacktrace) {
+      debugPrint(e.toString());
+      debugPrint(stacktrace.toString());
+      setStateLoading(Loading.error.obs);
+    }
+    return [];
+  }
+
+  void setStateLoading(Rx<Loading> loadingParam) {
+    loading.value = loadingParam.value;
+  }
+
+  void assignSuggestions(Result result) {
+    suggestions.add(Result(
+      adult: result.adult,
+      backdropPath: result.backdropPath,
+      genreIds: result.genreIds,
+      id: result.id,
+      originalLanguage: result.originalLanguage,
+      originalTitle: result.originalTitle,
+      overview: result.overview,
+      popularity: result.popularity,
+      posterPath: result.posterPath,
+      releaseDate: result.releaseDate,
+      title: result.title, 
+      video: result.video,
+      voteAverage: result.voteAverage,
+      voteCount: result.voteCount
+    ));
+  }
+
+  void removeSuggestions(int id) {
+    suggestions.removeWhere((el) => el.id == id);
+  }
+}
+
+class SearchV2 extends StatefulWidget {
+  const SearchV2({
+    Key? key, 
   }) : super(key: key);
+
+  @override
+  State<SearchV2> createState() => _SearchV2State();
+}
+
+class _SearchV2State extends State<SearchV2> {
 
   @override
   Widget build(BuildContext context) {
@@ -32,34 +103,17 @@ class SearchV2 extends StatelessWidget {
           IconButton(
             splashRadius: 20.0,
             onPressed: () {
-              showSearch(context: context, delegate: EventSearch(     
-                context: context
-              ));
+              showSearch(context: context, 
+                delegate: MovieSearch(
+                  f: setState
+                )
+              );
             }, 
             icon: const Icon(
               Icons.search,
               color: Colors.black,
             )
           )
-          // GestureDetector(
-          //   onTap: () {
-          //     showSearch(context: context, delegate: EventSearch(
-          //       context: context
-          //     ));
-          //   },
-          //   child: Container(
-          //     margin: const EdgeInsets.only(left: 16.0, right: 16.0),
-          //     child: Row(
-          //       children: const [
-          //         Icon(
-          //           Icons.search,
-          //           size: 20.0,
-          //           color: Colors.white,
-          //         ),
-          //       ],
-          //     ) 
-          //   ),
-          // )
         ],
       ),
     );
@@ -67,10 +121,11 @@ class SearchV2 extends StatelessWidget {
   }
 }
 
-class EventSearch extends SearchDelegate {
-  final BuildContext? context;
-  EventSearch({
-    this.context
+class MovieSearch extends SearchDelegate {
+  Function f;
+
+  MovieSearch({
+    required this.f
   });
 
   @override
@@ -107,101 +162,133 @@ class EventSearch extends SearchDelegate {
   }
 
   @override
-  List<Widget> buildActions(BuildContext context) => [
-    IconButton(
-      icon: const Icon(Icons.clear), 
-      onPressed: () {
-        if(query.isEmpty) {
-          close(context, null);
-        } else {
-          query = '';
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear), 
+        onPressed: () {
+          if(query.isEmpty) {
+            close(context, null);
+          } else {
+            query = '';
+          }
         }
-      }
-    )
-  ];
+      )
+    ];
+  } 
 
   @override
-  Widget buildLeading(BuildContext context) =>  IconButton(
-    icon: const Icon(Icons.arrow_back), 
-    onPressed: () {
-      Navigator.of(context).pop();
-    }
-  );
+  Widget buildLeading(BuildContext context) {
+    return CupertinoNavigationBarBackButton(
+      color: Colors.black,
+      onPressed: () {
+        Navigator.of(context).pop();
+      },
+    );
+  } 
   
   @override
-  Widget buildResults(BuildContext context) => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(
-          Icons.movie,
-          size: 120.0,
-        ),
-        const SizedBox(height: 48.0),
-        Text(query)
-      ],
-    ),
-  );
+  Widget buildResults(BuildContext context) {
+    return buildMatchingSuggestions(context);
+  }
   
   @override
   Widget buildSuggestions(BuildContext context) {
+    return buildMatchingSuggestions(context);
+  }
 
-    Future<List<Result>> getData(BuildContext context, String query) async {
-      Dio dio = Dio();
-      Response res = await dio.get("${AppConstants.baseUrl}?api_key=${AppConstants.movieKey}&query=$query");
-      Map<String, dynamic> data = res.data;
-      MovieDbModel movieDbModel = MovieDbModel.fromJson(data);
-      List<Result> movieDBResult = movieDbModel.results!;
-      return movieDBResult;
+  Widget buildMatchingSuggestions(BuildContext context) {
+   
+    SearchV2Controller c = Get.put(SearchV2Controller());
+
+    if(query.isNotEmpty) {
+      c.getData(context, query);
     }
 
-    return query.isEmpty 
-    ? Container() 
-    : FutureBuilder<List<Result>>(
-      future: getData(context, query),
-      builder: (BuildContext context, AsyncSnapshot<List<Result>> snapshot) {
-        if(snapshot.connectionState == ConnectionState.waiting) {
-          return Container();
-        }
+    List<Result> data = query.isEmpty 
+    ? [] 
+    : c.movies.where((event) {
+      final descLower = event.title!.toLowerCase();
+      final queryLower = query.toLowerCase();
+      return descLower.contains(queryLower);
+    }).toList();
 
-        List<Result> data = snapshot.data!;
-
-        List<Result> suggestions = query.isEmpty 
-        ? [] 
-        : data.where((event) {
-          final descLower = event.title!.toLowerCase();
-          final queryLower = query.toLowerCase();
-          return descLower.contains(queryLower);
-        }).toList();
-
-        return suggestions.isEmpty 
-        ? Center(
-            child: Container()
-          ) 
-        : ListView.builder(
-            itemCount: suggestions.length,
-            itemBuilder: (BuildContext context, int i) {
-            final suggestion = suggestions[i];
-            return ListTile(
-              dense: true,
-              onTap: () {
-                
-              },
-              visualDensity: const VisualDensity(
-                vertical: 4.0,
-                horizontal: 0.0
-              ),
-              title: Text(suggestion.title!,
-                style: const TextStyle(
-                  fontSize: 15.0,
+    return Obx(() {
+      if(c.loading.value == Loading.idle) {
+        return Container();
+      } 
+      if(c.loading.value == Loading.loading) {
+        return const ShimmerVer1(count: 10);
+      } 
+      if(c.loading.value == Loading.loaded) {
+        return query.isNotEmpty 
+        ? data.isEmpty 
+          ? const Center(
+              child: Text("Data not found",
+                style: TextStyle(
+                  fontSize: 14.0,
                   color: Colors.black
                 ),
-              ),
-            );
-          },
-        ); 
+              )
+            )
+          : ListView.builder(
+              itemCount: data.length,
+              itemBuilder: (BuildContext context, int i) {
+              final item = data[i];
+              return ListTile(
+                dense: true,
+                onTap: () {
+                  c.assignSuggestions(item);
+                },
+                visualDensity: const VisualDensity(
+                  vertical: 4.0,
+                  horizontal: 0.0
+                ),
+                title: Text(item.title!,
+                  style: const TextStyle(
+                    fontSize: 15.0,
+                    color: Colors.black
+                  ),
+                ),
+              );
+            },
+          ) 
+        : c.suggestions.isNotEmpty 
+        ? ListView.builder(
+            itemCount: c.suggestions.take(3).length,
+            itemBuilder: (BuildContext context, int i) {
+              final item = c.suggestions[i];
+              return ListTile(
+                dense: true,
+                onTap: () {
+       
+                },
+                trailing: IconButton(
+                  splashRadius: 20.0,
+                  onPressed: () {
+                    c.removeSuggestions(item.id!);
+                  }, 
+                  icon: const Icon(
+                    Icons.clear,
+                  ) 
+                ),
+                visualDensity: const VisualDensity(
+                  vertical: 4.0,
+                  horizontal: 0.0
+                ),
+                title: Text(item.title!,
+                  style: const TextStyle(
+                    fontSize: 15.0,
+                    color: Colors.black
+                  ),
+                ),
+              );
+            },
+          ) 
+        : Container();
       }
-    );
+      return Container();
+    });
   }
   
 }

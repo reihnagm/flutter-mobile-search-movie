@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter_search/basewidgets/drawer/drawer.dart';
-import 'package:flutter_search/basewidgets/loader/shimmer_ver1.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:get/get_navigation/src/root/get_material_app.dart';
 
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import 'package:flutter_search/basewidgets/drawer/drawer.dart';
+import 'package:flutter_search/basewidgets/loader/shimmer_ver1.dart';
 
 import 'package:flutter_search/models/movie.dart';
 import 'package:flutter_search/utils/constant.dart';
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return const GetMaterialApp(
       title: 'Search Movie',
       debugShowCheckedModeBanner: false,
       home: MyHomePage(),

@@ -19,6 +19,9 @@ dependencies:
   # D
   dio: ^4.0.4
 
+  # G
+  get: ^4.6.5
+
   # S
   shimmer: ^2.0.0
 
